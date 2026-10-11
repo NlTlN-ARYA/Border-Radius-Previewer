@@ -1,0 +1,429 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Border-radius Previewer</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 30px 16px;
+            min-height: 100vh;
+            font-family: Arial, sans-serif;
+            background: #0f172a;
+            color: #f1f5f9;
+        }
+
+        h1, h2, p {
+            margin-top: 0;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            color: #38bdf8;
+        }
+
+        header p, .muted {
+            color: #94a3b8;
+        }
+
+        .layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 22px;
+            max-width: 1100px;
+            margin: auto;
+        }
+
+        .panel {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 14px;
+            padding: 22px;
+            min-width: 0;
+        }
+
+        .control {
+            margin: 22px 0;
+        }
+
+        .control label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        .control-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        input[type="range"] {
+            flex: 1;
+            min-width: 0;
+            accent-color: #38bdf8;
+            cursor: pointer;
+        }
+
+        input[type="number"] {
+            width: 75px;
+            padding: 8px;
+            border: 1px solid #475569;
+            border-radius: 7px;
+            background: #0f172a;
+            color: white;
+        }
+
+        .preview-area {
+            min-height: 330px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        #previewBox {
+            width: min(260px, 90%);
+            aspect-ratio: 1 / 1;
+            background: linear-gradient(135deg, #3b82f6, #a855f7);
+            border: 3px solid #93c5fd;
+            transition: border-radius 0.12s ease;
+        }
+
+        button {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 8px;
+            background: #38bdf8;
+            color: #0f172a;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #7dd3fc;
+        }
+
+        .secondary {
+            background: #334155;
+            color: white;
+        }
+
+        .secondary:hover {
+            background: #475569;
+        }
+
+        .section-heading {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .advanced {
+            margin-top: 22px;
+            padding-top: 16px;
+            border-top: 1px solid #475569;
+        }
+
+        .advanced summary {
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .advanced-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0 16px;
+        }
+
+        .advanced .control label {
+            font-size: 14px;
+        }
+
+        pre {
+            padding: 16px;
+            border-radius: 9px;
+            background: #0b1220;
+            border: 1px solid #334155;
+            color: #7dd3fc;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+        #message {
+            min-height: 20px;
+            margin-top: 10px;
+            color: #86efac;
+            font-size: 14px;
+        }
+
+        @media (max-width: 750px) {
+            .layout {
+                grid-template-columns: 1fr;
+            }
+
+            .advanced-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <h1>Border-radius Previewer</h1>
+        <p>Adjust the values and watch your shape change!</p>
+    </header>
+
+    <main class="layout">
+        <section class="panel">
+            <h2>Border-radius Values</h2>
+            <p class="muted">Adjust each corner in pixels.</p>
+
+            <div id="basicControls"></div>
+
+            <details class="advanced">
+                <summary>Advanced: 8 values</summary>
+                <p class="muted">
+                    Control the horizontal and vertical radius separately.
+                </p>
+                <div id="advancedControls" class="advanced-grid"></div>
+            </details>
+
+            <button id="resetButton" class="secondary" type="button">
+                Reset Values
+            </button>
+        </section>
+
+        <div>
+            <section class="panel">
+                <div class="section-heading">
+                    <h2>Live Preview</h2>
+                    <button id="copyButton" type="button">Copy CSS</button>
+                </div>
+
+                <div class="preview-area">
+                    <div id="previewBox"></div>
+                </div>
+            </section>
+
+            <section class="panel" style="margin-top: 22px;">
+                <h2>Generated CSS</h2>
+                <pre id="cssOutput"></pre>
+                <p id="message" aria-live="polite"></p>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        const corners = [
+            { key: "tl", label: "Top Left", initial: 25 },
+            { key: "tr", label: "Top Right", initial: 50 },
+            { key: "br", label: "Bottom Right", initial: 25 },
+            { key: "bl", label: "Bottom Left", initial: 50 }
+        ];
+
+        const axes = [
+            { key: "tlh", label: "Top Left Horizontal", corner: "tl", axis: "h" },
+            { key: "tlv", label: "Top Left Vertical", corner: "tl", axis: "v" },
+            { key: "trh", label: "Top Right Horizontal", corner: "tr", axis: "h" },
+            { key: "trv", label: "Top Right Vertical", corner: "tr", axis: "v" },
+            { key: "brh", label: "Bottom Right Horizontal", corner: "br", axis: "h" },
+            { key: "brv", label: "Bottom Right Vertical", corner: "br", axis: "v" },
+            { key: "blh", label: "Bottom Left Horizontal", corner: "bl", axis: "h" },
+            { key: "blv", label: "Bottom Left Vertical", corner: "bl", axis: "v" }
+        ];
+
+        const values = {};
+        const advancedValues = {};
+
+        corners.forEach(corner => {
+            values[corner.key] = corner.initial;
+        });
+
+        axes.forEach(axis => {
+            const corner = corners.find(c => c.key === axis.corner);
+            advancedValues[axis.key] = corner.initial;
+        });
+
+        const basicControls = document.getElementById("basicControls");
+        const advancedControls = document.getElementById("advancedControls");
+        const previewBox = document.getElementById("previewBox");
+        const cssOutput = document.getElementById("cssOutput");
+        const message = document.getElementById("message");
+
+        function createControl(container, key, label, initial, advanced) {
+            const wrapper = document.createElement("div");
+            wrapper.className = "control";
+
+            const labelElement = document.createElement("label");
+            labelElement.textContent = label;
+            labelElement.htmlFor = key + "Range";
+
+            const row = document.createElement("div");
+            row.className = "control-row";
+
+            const slider = document.createElement("input");
+            slider.type = "range";
+            slider.min = 0;
+            slider.max = 150;
+            slider.value = initial;
+            slider.id = key + "Range";
+            slider.setAttribute("aria-label", label + " slider");
+
+            const number = document.createElement("input");
+            number.type = "number";
+            number.min = 0;
+            number.max = 150;
+            number.value = initial;
+            number.id = key + "Number";
+            number.setAttribute("aria-label", label + " in pixels");
+
+            function update(value) {
+                let parsed = Number(value);
+
+                if (value === "" || !Number.isFinite(parsed)) {
+                    return;
+                }
+
+                parsed = Math.max(0, Math.min(150, parsed));
+                parsed = Math.round(parsed);
+
+                slider.value = parsed;
+                number.value = parsed;
+
+                if (advanced) {
+                    advancedValues[key] = parsed;
+                } else {
+                    values[key] = parsed;
+
+                    // Keep the advanced controls in sync.
+                    const h = key + "h";
+                    const v = key + "v";
+
+                    advancedValues[h] = parsed;
+                    advancedValues[v] = parsed;
+
+                    document.getElementById(h + "Range").value = parsed;
+                    document.getElementById(h + "Number").value = parsed;
+                    document.getElementById(v + "Range").value = parsed;
+                    document.getElementById(v + "Number").value = parsed;
+                }
+
+                render();
+            }
+
+            slider.addEventListener("input", () => update(slider.value));
+            number.addEventListener("input", () => update(number.value));
+
+            row.append(slider, number);
+            wrapper.append(labelElement, row);
+            container.appendChild(wrapper);
+        }
+
+        corners.forEach(corner => {
+            createControl(
+                basicControls,
+                corner.key,
+                corner.label,
+                corner.initial,
+                false
+            );
+        });
+
+        axes.forEach(axis => {
+            createControl(
+                advancedControls,
+                axis.key,
+                axis.label,
+                advancedValues[axis.key],
+                true
+            );
+        });
+
+        function render() {
+            const advancedOpen =
+                document.querySelector(".advanced").open;
+
+            let borderRadius;
+
+            if (advancedOpen) {
+                const horizontal = axes
+                    .filter(axis => axis.axis === "h")
+                    .map(axis => advancedValues[axis.key] + "px");
+
+                const vertical = axes
+                    .filter(axis => axis.axis === "v")
+                    .map(axis => advancedValues[axis.key] + "px");
+
+                borderRadius =
+                    horizontal.join(" ") + " / " + vertical.join(" ");
+            } else {
+                borderRadius = corners
+                    .map(corner => values[corner.key] + "px")
+                    .join(" ");
+            }
+
+            previewBox.style.borderRadius = borderRadius;
+            cssOutput.textContent =
+                "border-radius: " + borderRadius + ";";
+
+            message.textContent = "";
+        }
+
+        document.querySelector(".advanced").addEventListener("toggle", render);
+
+        document.getElementById("copyButton").addEventListener("click", async () => {
+            try {
+                await navigator.clipboard.writeText(cssOutput.textContent);
+                message.textContent = "CSS copied to clipboard!";
+            } catch (error) {
+                // Fallback for browsers that block clipboard access.
+                const temp = document.createElement("textarea");
+                temp.value = cssOutput.textContent;
+                document.body.appendChild(temp);
+                temp.select();
+
+                const copied = document.execCommand("copy");
+                temp.remove();
+
+                message.textContent = copied
+                    ? "CSS copied to clipboard!"
+                    : "Copy failed. Select and copy the CSS manually.";
+            }
+        });
+
+        document.getElementById("resetButton").addEventListener("click", () => {
+            corners.forEach(corner => {
+                values[corner.key] = corner.initial;
+                document.getElementById(corner.key + "Range").value = corner.initial;
+                document.getElementById(corner.key + "Number").value = corner.initial;
+            });
+
+            axes.forEach(axis => {
+                const initial = corners.find(c => c.key === axis.corner).initial;
+                advancedValues[axis.key] = initial;
+                document.getElementById(axis.key + "Range").value = initial;
+                document.getElementById(axis.key + "Number").value = initial;
+            });
+
+            render();
+        });
+
+        render();
+    </script>
+</body>
+</html>
